@@ -6,7 +6,7 @@ from scipy import ndimage
 
 def main():
     # Get the image and its initial shape
-    img, init_shape = load_image('all/16_36_20_10_680.jpg') # 70-100
+    img, init_shape = load_image('../all/16_36_20_10_680.jpg') # 70-100
 
     # Get greyscaled matrix and array and HSV of the image
     img_grey_mat, img_grey_arr, hsv = get_grey_and_hsv(img)
@@ -94,7 +94,7 @@ def main():
 
     # Opening and Closing
     bin4morf = (browniest>0.5)
-    open_img = ndimage.binary_opening(bin4morf[:,:,1], structure=np.ones((10,10)))
+    open_img = ndimage.binary_opening(bin4morf[:,:,1])
     # Remove small black hole
     close_img_cancer = ndimage.binary_closing(open_img)
 
