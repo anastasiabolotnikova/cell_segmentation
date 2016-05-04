@@ -6,7 +6,7 @@ from scipy import ndimage
 
 def main():
     # Get the image and its initial shape
-    img, init_shape = load_image('../all/16_36_20_10_680.jpg') # 70-100
+    img, init_shape = load_image('../all/16_36_3_3_768.jpg') # 70-100
 
     # Get greyscaled matrix and array and HSV of the image
     img_grey_mat, img_grey_arr, hsv = get_grey_and_hsv(img)
@@ -145,7 +145,7 @@ def show_segmented_result(original_img, closed_heathly, closed_cancer):
 
 
 def show_masks_and_histograms(masks1, mask2, histograms):
-    plt.subplot(221), plt.imshow(masks1), plt.contour(masks1, [0.5], linewidths=1, colors='r')
+    plt.subplot(221), plt.imshow(masks1)#, plt.contour(masks1, [0.5], linewidths=1, colors='r')
     plt.subplot(222), plt.imshow(mask2,'gray')
     plt.subplot(212), plt.plot(histograms[0], color = "b")#, plt.plot(hit, color = "k")
     # Brown stuff
