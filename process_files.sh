@@ -1,0 +1,1 @@
+cat files2process.txt | xargs -n 1 python iiris_nana_segment.py

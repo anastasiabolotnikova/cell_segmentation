@@ -4,9 +4,9 @@ import numpy as np
 from scipy import ndimage
 
 
-def main():
+def main(filename):
     # Get the image and its initial shape
-    img, init_shape = load_image('../all/16_36_14_4_760.jpg') # 70-100
+    img, init_shape = load_image(filename) # 70-100
 
     # Get greyscaled matrix and array and HSV of the image
     img_grey_mat, img_grey_arr, hsv = get_grey_and_hsv(img)
@@ -61,16 +61,16 @@ def main():
     max_loc2 = np.argmax(hist_brown_modified[151:255])+151
     clip_min = (max_loc1+max_loc2)/2
 
-    print("Max loc 1: "+str(max_loc1))
+    '''print("Max loc 1: "+str(max_loc1))
     print(max_loc2)
-    print(clip_min)
+    print(clip_min)'''
 
     mask_bright_brown = img_grey_mat[:,:]<clip_min
     index_brown_bright_not = np.where(mask_bright_brown*thresh_brown*no_bg_mask)
     browniest = np.zeros(init_shape)
     browniest[index_brown_bright_not] = img[index_brown_bright_not]
 
-    show_masks_and_histograms(thresh_brown*no_bg_mask, browniest, [hist_full_brown, hist_brown_modified])
+    #show_masks_and_histograms(thresh_brown*no_bg_mask, browniest, [hist_full_brown, hist_brown_modified])
 
     # Clip the blue histogram
     hist_blue_modified = hist_full_blue[:,0]
@@ -104,13 +104,13 @@ def main():
 
     # Display tool for analyzing resulted masks and histograms
     #show_masks_and_histograms(close_img_healthy, thresh_brown*no_bg_mask, [hist_full_blue])
-    show_masks_and_histograms(blueiest, close_img_healthy, [hist_full_blue, hist_blue_modified])
+    #show_masks_and_histograms(blueiest, close_img_healthy, [hist_full_blue, hist_blue_modified])
 
 
 # Load the sample image
 def load_image(filename):
     img = cv2.imread(filename)
-    print "read the image"
+    print "read the image" + filename
     return img, img.shape
 
 
@@ -135,9 +135,9 @@ def show_segmented_result(original_img, closed_heathly, closed_cancer):
     # We load with opencv and plot with pyplot (BGR->RGB)
     original_img = cv2.cvtColor(original_img, cv2.COLOR_BGR2RGB)
     plt.imshow(original_img)
-    plt.contour(closed_heathly, [0.5], linewidths=1, colors='g')
-    plt.contour(closed_cancer, [0.5], linewidths=1, colors='r')
-    plt.show()
+    plt.contour(closed_heathly, [0.5], linewidths=0.7, colors='g')
+    plt.contour(closed_cancer, [0.5], linewidths=0.7, colors='r')
+    plt.savefig(sys.argv[1]+"_out.png", dpi=700)
 
 
 def show_masks_and_histograms(masks1, mask2, histograms):
@@ -155,4 +155,5 @@ def save_result(image, filename):
 
 
 if __name__ == '__main__':
-    main()
+    import sys
+    main(sys.argv[1])
