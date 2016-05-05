@@ -6,7 +6,7 @@ from scipy import ndimage
 
 def main():
     # Get the image and its initial shape
-    img, init_shape = load_image('../all/16_36_3_3_768.jpg') # 70-100
+    img, init_shape = load_image('../all/16_36_14_4_760.jpg') # 70-100
 
     # Get greyscaled matrix and array and HSV of the image
     img_grey_mat, img_grey_arr, hsv = get_grey_and_hsv(img)
@@ -24,65 +24,63 @@ def main():
 
     # Find local minimum to get rid of the background
     clip_min = local_minimum(hist)
-    bin_img = img_grey_arr < clip_min
-    indexes = np.where(bin_img)
+    no_bg_mask = img_grey_arr < clip_min
 
     # Collect the non-background pixel values in different channels
+    '''indexes = np.where(bin_img)
     img_no_bg = img_grey_arr[indexes]
     hue_no_bg = hue[indexes]
     sat_no_bg = sat[indexes]
 
     hist_full_gray = cv2.calcHist([np.array(img_no_bg)],[0],None,[256],[0,256])
     hist_full_hue = cv2.calcHist([np.array(hue_no_bg)],[0],None,[256],[0,256])
-    hist_full_sat = cv2.calcHist([np.array(sat_no_bg)],[0],None,[256],[0,256])
+    hist_full_sat = cv2.calcHist([np.array(sat_no_bg)],[0],None,[256],[0,256])'''
 
     # Apply thresholding on the hue component
-    ret,thresh1 = cv2.threshold(hsv[:,:,0],20,255,cv2.THRESH_BINARY)
-    ret,thresh2 = cv2.threshold(hsv[:,:,0],100,130,cv2.THRESH_BINARY)
+    # Get binary mask (0 and 255) for brown pixels
+    ret,thresh_brown = cv2.threshold(hsv[:,:,0],20,255,cv2.THRESH_BINARY)
+    thresh_brown = 255-thresh_brown
+    # Get binary mask for brown pixels
+    ret,thresh_blue = cv2.threshold(hsv[:,:,0],100,130,cv2.THRESH_BINARY)
+    thresh_blue[:,:] = (thresh_blue[:,:]>0)*255
 
-    bin_img.shape = (init_shape[0], init_shape[1])
-    thresh1 = 255-thresh1
-    thresh2[:,:] = (thresh2[:,:]>0)*255
-    index_brown = np.where(thresh1*bin_img)
-    index_blue = np.where(thresh2*bin_img)
+    # Get indeces for no background blue and brown regions
+    no_bg_mask.shape = (init_shape[0], init_shape[1])
+    index_brown = np.where(thresh_brown*no_bg_mask)
+    #show_masks_and_histograms(no_bg_mask, img, [hist, hist])
+    index_blue = np.where(thresh_blue*no_bg_mask)
 
+    # Compute histograms
     hist_full_brown= cv2.calcHist([img_grey_mat[index_brown]],[0],None,[256],[0,256])
     hist_full_blue = cv2.calcHist([sat_matrix[index_blue]],[0],None,[256],[0,256])
 
     # Clip the brown histogram
-    hit = hist_full_brown[:,0]
-    hit = np.convolve(hit,[1,1,1,1,1,1,1,1,1,1]) # smooth
-    max_loc = np.argmax(hit)
-    clip_min = 0
-    for i in range(max_loc+10,200,1):
-        change =hit[i]-hit[i-5]
-        print(change)
-        if change > 0:
-            clip_min = i
-            break
+    hist_brown_modified = hist_full_brown[:,0]
+    hist_brown_modified = np.convolve(hist_brown_modified,[1,1,1,1,1,1,1,1,1,1]) # smooth
+    max_loc1 = np.argmax(hist_brown_modified[0:150])
+    max_loc2 = np.argmax(hist_brown_modified[151:255])+151
+    clip_min = (max_loc1+max_loc2)/2
+
+    print("Max loc 1: "+str(max_loc1))
+    print(max_loc2)
     print(clip_min)
 
     mask_bright_brown = img_grey_mat[:,:]<clip_min
-    index_brown_bright_not = np.where(mask_bright_brown*thresh1*bin_img)
+    index_brown_bright_not = np.where(mask_bright_brown*thresh_brown*no_bg_mask)
     browniest = np.zeros(init_shape)
     browniest[index_brown_bright_not] = img[index_brown_bright_not]
 
-    # Clip the blue histogram
-    hit = hist_full_blue[:,0]
-    hit = np.convolve(hit,[1,0,-1/2])# smooth
-    #hit = np.convolve(hit,[1,1,1,1,1,1,1,1,1])
+    show_masks_and_histograms(thresh_brown*no_bg_mask, browniest, [hist_full_brown, hist_brown_modified])
 
-    clip_min = 0
-    for i in range(255,5,-1):
-        change =hit[i]-hit[i-5]
-        print(change)
-        if change > 10:
-            clip_min = i
-            break
+    # Clip the blue histogram
+    hist_blue_modified = hist_full_blue[:,0]
+    hist_blue_modified = np.convolve(hist_blue_modified,[1,1,1])# smooth
+    max_loc = np.argmax(hist_blue_modified)
+    clip_min = 2*max_loc
     print(clip_min)
 
-    mask_bright_blue = sat_matrix[:,:]>21
-    index_blue_bright_not = np.where(mask_bright_blue*thresh2*bin_img)
+    mask_bright_blue = sat_matrix[:,:]>clip_min
+    index_blue_bright_not = np.where(mask_bright_blue*thresh_blue*no_bg_mask)
     blueiest = np.zeros(init_shape)
     blueiest[index_blue_bright_not] = img[index_blue_bright_not]
 
@@ -105,8 +103,8 @@ def main():
     show_segmented_result(img, close_img_healthy, close_img_cancer)
 
     # Display tool for analyzing resulted masks and histograms
-    show_masks_and_histograms(close_img_healthy, thresh1*bin_img, [hist_full_blue])
-    show_masks_and_histograms(blueiest, close_img_healthy, [hist_full_blue])
+    #show_masks_and_histograms(close_img_healthy, thresh_brown*no_bg_mask, [hist_full_blue])
+    show_masks_and_histograms(blueiest, close_img_healthy, [hist_full_blue, hist_blue_modified])
 
 
 # Load the sample image
@@ -119,7 +117,8 @@ def load_image(filename):
 def get_grey_and_hsv(img):
     # Get grey for brightness evaluation (matrix and array)
     img_gray_mat = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    img_gray_arr = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    #img_gray_mat = cv2.equalizeHist(img_gray_mat)
+    img_gray_arr = np.copy(img_gray_mat)
     img_gray_arr.shape = (1,img_gray_arr.shape[0]*img_gray_arr.shape[1])
     # Convert to hsv and get channels
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
@@ -129,10 +128,7 @@ def get_grey_and_hsv(img):
 def local_minimum(hist):
     hit = hist[:,0]
     max_loc = np.argmax(hit)
-    for i in range(max_loc,5,-1):
-        change =hit[i]-hit[i-5]
-        if change < 0:
-            return i
+    return 255-2*(255-max_loc)
 
 
 def show_segmented_result(original_img, closed_heathly, closed_cancer):
@@ -147,7 +143,7 @@ def show_segmented_result(original_img, closed_heathly, closed_cancer):
 def show_masks_and_histograms(masks1, mask2, histograms):
     plt.subplot(221), plt.imshow(masks1)#, plt.contour(masks1, [0.5], linewidths=1, colors='r')
     plt.subplot(222), plt.imshow(mask2,'gray')
-    plt.subplot(212), plt.plot(histograms[0], color = "b")#, plt.plot(hit, color = "k")
+    plt.subplot(212), plt.plot(histograms[0], color = "b"), plt.plot(histograms[1], color = "r")#, plt.plot(hit, color = "k")
     # Brown stuff
     #plt.subplot(212), plt.plot(hist_full_brown, color = "k"),plt.axvline(clip_min), plt.plot(hit, color="pink")#, plt.plot(hist_full_sat, color="green")
     plt.xlim([0,256])
