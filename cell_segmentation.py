@@ -1,3 +1,6 @@
+# Bioinformatics seminar project, May 2016
+## code authors Anastasia Bolotnikova, Iiris Lüsi
+
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
